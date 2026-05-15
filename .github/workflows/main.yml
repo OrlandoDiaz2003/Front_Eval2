@@ -8,6 +8,7 @@ on:
 jobs:
   build-push-deploy-front:
     runs-on: ubuntu-latest
+    environment: deploy
 
     steps:
       - name: Checkout codigo
