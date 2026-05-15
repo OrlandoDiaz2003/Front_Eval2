@@ -2,6 +2,7 @@ services:
   front:
     container_name: frontend_usuarios
     restart: always
+    image: ${DOCKER_IMAGE_URL:-front_eval2-front:latest}
     build: .
     ports:
       - "${PORT}:5000"
