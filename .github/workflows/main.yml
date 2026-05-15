@@ -1,0 +1,53 @@
+name: CI/CD frontend gestion de usuarios
+
+on:
+  push:
+    branches: [ "deploy" ]
+    paths:
+    - "**"
+jobs:
+  build-push-deploy-front:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout codigo
+        uses: actions/checkout@v3
+
+      - name: Configurar AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Iniciar sesion en aws ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: subir a repositorio ecr
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.ECR_REPO_NAME_FRONT }}
+          IMAGE_TAG: latest
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+      - name: Desplegar en ec2 via SSM
+        run: |
+          aws ssm send-command \
+          --instance-ids ${{ secrets.EC2_FRONT_INSTANCE_ID }} \
+          --document-name "AWS-RunShellScript" \
+          --parameters '{"commands": [
+              "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}",
+              "cd /home/ubuntu/Front_Eval2",
+              "docker compose pull",
+              "docker compose up -d"
+            ]}' \
+            --output text
+          
+      
+      
+        
+         
+      
